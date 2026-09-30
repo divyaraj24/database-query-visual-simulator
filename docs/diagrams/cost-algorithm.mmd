@@ -1,0 +1,22 @@
+flowchart LR
+    subgraph ScanChoice["Per base table: scan strategy"]
+        direction TB
+        S1["Table referenced\nin FROM/JOIN"] --> S2{"Filter column\nindexed?"}
+        S2 -- No --> S3["Choose Seq Scan"]
+        S2 -- Yes --> S4["Compute Index\nScan cost"]
+        S4 --> S5{"Index Scan cost <\nSeq Scan cost?"}
+        S5 -- Yes --> S6["Choose Index Scan"]
+        S5 -- No --> S3
+    end
+
+    subgraph JoinChoice["Per join: join strategy"]
+        direction TB
+        J1["Outer + inner node\nalready costed"] --> J2["Compute Hash\nJoin cost"]
+        J1 --> J3["Compute Nested-Loop cost\n(index-probe if inner indexed\non join column, else full scan)"]
+        J2 --> J4{"Hash Join cost <=\nNested-Loop cost?"}
+        J3 --> J4
+        J4 -- Yes --> J5["Choose Hash Join"]
+        J4 -- No --> J6["Choose Nested-Loop Join"]
+    end
+
+    ScanChoice -.-> JoinChoice

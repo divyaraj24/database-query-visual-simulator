@@ -1,0 +1,226 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: #f8fafc;
+  color: #1e293b;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.app-header {
+  padding: 12px 20px;
+  background: #1e293b;
+  color: white;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.app-header p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #cbd5e1;
+}
+
+.app-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.input-panel {
+  width: 320px;
+  flex-shrink: 0;
+  padding: 16px;
+  border-right: 1px solid #e2e8f0;
+  background: white;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.input-panel label {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 4px;
+}
+
+.input-panel textarea {
+  font-family: 'SF Mono', Menlo, monospace;
+  font-size: 12px;
+  padding: 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  resize: vertical;
+}
+
+.index-toggle {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.checkbox-row {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 6px !important;
+}
+
+.index-fields {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.index-fields input {
+  flex: 1;
+  padding: 4px 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+}
+
+.button-row button {
+  flex: 1;
+}
+
+button.secondary {
+  background: #f1f5f9;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
+}
+
+.recommendations {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.recommendations-title {
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.recommendation-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #1e293b;
+  font-weight: 400;
+  text-align: left;
+}
+
+.recommendation-row:hover {
+  border-color: #2563eb;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.sensitivity-line {
+  margin: 0;
+  line-height: 1.4;
+}
+
+button {
+  padding: 8px 12px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.error {
+  color: #dc2626;
+  font-size: 12px;
+}
+
+.summary {
+  font-size: 13px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.summary p {
+  margin: 2px 0;
+}
+
+.summary .improvement {
+  color: #16a34a;
+  font-weight: 700;
+}
+
+.canvases {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+}
+
+.plan-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #e2e8f0;
+  min-width: 0;
+}
+
+.plan-panel:last-child {
+  border-right: none;
+}
+
+.plan-panel h3 {
+  margin: 0;
+  padding: 10px 14px;
+  font-size: 14px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.plan-panel .placeholder {
+  padding: 20px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.flow-canvas {
+  flex: 1;
+  min-height: 0;
+}

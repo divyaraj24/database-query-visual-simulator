@@ -1,0 +1,12 @@
+flowchart TD
+    Form["React Frontend — input form\n(schema, query, row counts,\nhypothetical index)"]
+
+    subgraph Server["Spring Boot Backend"]
+        direction LR
+        Parser["ANTLR4 Parser\n(SqlSubset.g4)"] --> Visitors["Schema Visitor +\nQuery Model Builder"] --> Cost["Cost Engine\n(scan + join cost formulas)"] --> Plan["Plan Builder\n(left-deep plan tree)"]
+    end
+
+    Canvas["React Frontend — React Flow canvas\n(baseline vs with-index plan, side by side)"]
+
+    Form -- "POST /api/analyze\n{ddl, query, tableStats,\nhypotheticalIndexes[]}" --> Server
+    Server -- "{baselinePlan, withIndexPlan,\nbaselineCost, withIndexCost}" --> Canvas

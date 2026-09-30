@@ -1,0 +1,9 @@
+flowchart LR
+    A["1. Enter schema,\nquery, row counts"]
+    B["2. Toggle hypothetical\nindex, click Analyze"]
+    C["3. Backend parses\nschema + query\n(ANTLR4 + visitors)"]
+    D["4. Cost Engine builds\nbaseline & with-index\nplan trees"]
+    E["5. Both plans + costs\nreturned as JSON"]
+    F["6. Frontend renders\nboth as node graphs\n(React Flow)"]
+
+    A --> B --> C --> D --> E --> F

@@ -1,0 +1,17 @@
+# Backend
+backend/target/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# OS
+.DS_Store
+
+# Python (if present anywhere)
+__pycache__/
+*.pyc
+
+# Local env
+.venv/
+requirements_for_work.txt
