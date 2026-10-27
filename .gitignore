@@ -15,3 +15,12 @@ __pycache__/
 # Local env
 .venv/
 requirements_for_work.txt
+
+# IDE
+backend/.classpath
+backend/.project
+backend/.settings/
+
+# Redundant packaging copy (kept locally only)
+docs/DatabaseQueryVisualSimulator_Submission/
+*_revised.docx

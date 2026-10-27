@@ -1,12 +1,16 @@
-flowchart TD
+flowchart LR
     Form["React Frontend — input form\n(schema, query, row counts,\nhypothetical index)"]
 
     subgraph Server["Spring Boot Backend"]
-        direction LR
-        Parser["ANTLR4 Parser\n(SqlSubset.g4)"] --> Visitors["Schema Visitor +\nQuery Model Builder"] --> Cost["Cost Engine\n(scan + join cost formulas)"] --> Plan["Plan Builder\n(left-deep plan tree)"]
+        direction TB
+        Shared["ANTLR4 Parser (SqlSubset.g4)\n+ Schema Visitor / Query Model Builder"]
+        Shared --> Analyze["Cost Engine + Plan Builder\n(POST /api/analyze)"]
+        Shared --> Recommend["Index Recommender\n(POST /api/recommend)"]
+        Shared --> Sensitivity["Sensitivity Analyzer\n(POST /api/sensitivity)"]
+        Recommend -.uses.-> Analyze
     end
 
-    Canvas["React Frontend — React Flow canvas\n(baseline vs with-index plan, side by side)"]
+    Canvas["React Frontend — plan graphs,\nranked-recommendation panel,\nsensitivity panel"]
 
-    Form -- "POST /api/analyze\n{ddl, query, tableStats,\nhypotheticalIndexes[]}" --> Server
-    Server -- "{baselinePlan, withIndexPlan,\nbaselineCost, withIndexCost}" --> Canvas
+    Form -- "ddl, query, tableStats,\nhypotheticalIndexes[]" --> Server
+    Server -- "plan trees / ranked list /\ncrossover points" --> Canvas

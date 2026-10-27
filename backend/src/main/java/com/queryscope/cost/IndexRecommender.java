@@ -12,15 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Automatic what-if index recommendation: candidate (table, column) pairs
- * are derived directly from the query itself (every WHERE-filter column and
- * every join column), rather than requiring the user to name a column by
- * hand. Each candidate is evaluated independently against the baseline
- * (same cost engine, same formulas as the manual toggle) and ranked by cost
- * improvement, generalizing the base paper's single-index what-if check
- * into a ranked recommendation over the whole candidate set.
- */
+// ranks every filter/join column in a query by how much a hypothetical index on it would save
 public class IndexRecommender {
 
     private final CostEngine costEngine = new CostEngine();
@@ -59,7 +51,7 @@ public class IndexRecommender {
         double baselineCost = costEngine.buildPlan(model, tables, rowCounts, List.of()).getCost();
 
         List<Recommendation> results = new ArrayList<>();
-        for (IndexRef candidate : candidateColumns(model)) {
+        for (IndexRef candidate : candidateColumns(model, tables)) {
             double withIndexCost = costEngine.buildPlan(model, tables, rowCounts, List.of(candidate)).getCost();
             double improvement = baselineCost == 0 ? 0 : 100.0 * (baselineCost - withIndexCost) / baselineCost;
             results.add(new Recommendation(candidate.getTable(), candidate.getColumn(), withIndexCost, improvement));
@@ -69,22 +61,31 @@ public class IndexRecommender {
         return results;
     }
 
-    /** Every column a WHERE clause filters on, plus every column either side of a join. */
-    private List<IndexRef> candidateColumns(QueryModel model) {
+    /**
+     * Every column a WHERE clause filters on, plus every column either side of a join,
+     * excluding primary key columns (a real database already indexes those automatically,
+     * so recommending one would be redundant).
+     */
+    private List<IndexRef> candidateColumns(QueryModel model, Map<String, TableDef> tables) {
         Set<String> seen = new LinkedHashSet<>();
         List<IndexRef> candidates = new ArrayList<>();
 
         for (FilterPredicate f : model.getFilters()) {
-            addIfNew(candidates, seen, f.getTable(), f.getColumn());
+            addIfNew(candidates, seen, tables, f.getTable(), f.getColumn());
         }
         for (JoinSpec j : model.getJoins()) {
-            addIfNew(candidates, seen, j.getLeftTable(), j.getLeftColumn());
-            addIfNew(candidates, seen, j.getRightTable(), j.getRightColumn());
+            addIfNew(candidates, seen, tables, j.getLeftTable(), j.getLeftColumn());
+            addIfNew(candidates, seen, tables, j.getRightTable(), j.getRightColumn());
         }
         return candidates;
     }
 
-    private void addIfNew(List<IndexRef> candidates, Set<String> seen, String table, String column) {
+    private void addIfNew(List<IndexRef> candidates, Set<String> seen, Map<String, TableDef> tables,
+                           String table, String column) {
+        TableDef tableDef = tables.get(table);
+        if (tableDef != null && column.equalsIgnoreCase(tableDef.getPrimaryKeyColumn())) {
+            return;
+        }
         String key = table.toLowerCase() + "." + column.toLowerCase();
         if (seen.add(key)) {
             candidates.add(new IndexRef(table, column));

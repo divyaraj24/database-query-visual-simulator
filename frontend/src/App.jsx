@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import ReactFlow, { Background, Controls } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { planToFlow } from './planLayout';
+import { planToFlow, NODE_COLORS } from './planLayout';
 import './App.css';
 
 const API_URL = 'http://localhost:8080/api/analyze';
@@ -14,12 +14,20 @@ const SAMPLE_DDL =
 const SAMPLE_QUERY =
   'SELECT * FROM small_table JOIN big_table ON small_table.id = big_table.small_id';
 
+const LEGEND_ITEMS = [
+  ['SeqScan', 'Seq Scan'],
+  ['IndexScan', 'Index Scan'],
+  ['HashJoin', 'Hash Join'],
+  ['NestedLoop', 'Nested Loop'],
+  ['Sort', 'Sort'],
+];
+
 function PlanCanvas({ title, plan, cost }) {
   if (!plan) {
     return (
       <div className="plan-panel">
         <h3>{title}</h3>
-        <p className="placeholder">Run an analysis to see this plan.</p>
+        <div className="empty-state">Run an analysis to see this plan.</div>
       </div>
     );
   }
@@ -27,13 +35,58 @@ function PlanCanvas({ title, plan, cost }) {
   return (
     <div className="plan-panel">
       <h3>
-        {title} — cost {cost.toFixed(2)}
+        {title} <span className="cost-chip">cost {cost.toFixed(2)}</span>
       </h3>
       <div className="flow-canvas">
-        <ReactFlow nodes={nodes} edges={edges} fitView proOptions={{ hideAttribution: true }}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          fitView
+          fitViewOptions={{ maxZoom: 1.1, padding: 0.3 }}
+          minZoom={0.3}
+          maxZoom={1.1}
+          proOptions={{ hideAttribution: true }}
+        >
           <Background />
           <Controls />
         </ReactFlow>
+      </div>
+    </div>
+  );
+}
+
+function CostComparisonBanner({ result }) {
+  if (!result) return null;
+  const { baselineCost, withIndexCost, percentImprovement } = result;
+  const maxCost = Math.max(baselineCost, withIndexCost, 0.0001);
+  const improved = percentImprovement > 0.05;
+  return (
+    <div className="cost-banner">
+      <div className="cost-banner-side">
+        <span className="cost-banner-label">Baseline cost</span>
+        <span className="cost-banner-value">{baselineCost.toFixed(2)}</span>
+        <div className="cost-banner-bar-track">
+          <div
+            className="cost-banner-bar-fill baseline"
+            style={{ width: `${(baselineCost / maxCost) * 100}%` }}
+          />
+        </div>
+      </div>
+      <div className="cost-banner-delta">
+        <span className={`cost-banner-delta-value ${improved ? 'improved' : 'flat'}`}>
+          {improved ? `−${percentImprovement.toFixed(1)}%` : 'no change'}
+        </span>
+        <span className="cost-banner-delta-label">cost change</span>
+      </div>
+      <div className="cost-banner-side">
+        <span className="cost-banner-label">With-index cost</span>
+        <span className="cost-banner-value">{withIndexCost.toFixed(2)}</span>
+        <div className="cost-banner-bar-track">
+          <div
+            className={`cost-banner-bar-fill ${improved ? 'with-index' : 'baseline'}`}
+            style={{ width: `${(withIndexCost / maxCost) * 100}%` }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -148,28 +201,41 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>QueryScope — Database Query Visual Simulator</h1>
-        <p>Parse a hypothetical schema + query, estimate cost, and toggle a what-if index.</p>
+        <div className="app-header-text">
+          <h1>QueryScope — Database Query Visual Simulator</h1>
+          <p className="tagline">Parse a hypothetical schema + query, estimate cost, and toggle a what-if index.</p>
+        </div>
+        <div className="legend">
+          {LEGEND_ITEMS.map(([type, label]) => (
+            <span className="legend-item" key={type}>
+              <span className="legend-swatch" style={{ background: NODE_COLORS[type].bg }} />
+              {label}
+            </span>
+          ))}
+        </div>
       </header>
 
       <div className="app-body">
         <aside className="input-panel">
-          <label>
-            Schema (CREATE TABLE)
-            <textarea rows={5} value={ddl} onChange={(e) => setDdl(e.target.value)} />
-          </label>
-          <label>
-            Query (SELECT)
-            <textarea rows={3} value={query} onChange={(e) => setQuery(e.target.value)} />
-          </label>
-          <label>
-            Assumed row counts (one per line, table=rows)
-            <textarea
-              rows={3}
-              value={tableStatsText}
-              onChange={(e) => setTableStatsText(e.target.value)}
-            />
-          </label>
+          <div className="panel-section">
+            <p className="panel-section-title">Schema &amp; query</p>
+            <label>
+              Schema (CREATE TABLE)
+              <textarea rows={5} value={ddl} onChange={(e) => setDdl(e.target.value)} />
+            </label>
+            <label>
+              Query (SELECT)
+              <textarea rows={3} value={query} onChange={(e) => setQuery(e.target.value)} />
+            </label>
+            <label>
+              Assumed row counts (one per line, table=rows)
+              <textarea
+                rows={3}
+                value={tableStatsText}
+                onChange={(e) => setTableStatsText(e.target.value)}
+              />
+            </label>
+          </div>
 
           <fieldset className="index-toggle">
             <legend>What-if index</legend>
@@ -195,18 +261,20 @@ export default function App() {
             </div>
           </fieldset>
 
-          <div className="button-row">
-            <button onClick={runAnalysis} disabled={loading}>
-              {loading ? 'Analyzing…' : 'Analyze'}
-            </button>
-            <button onClick={runRecommend} disabled={recommendLoading} className="secondary">
-              {recommendLoading ? 'Ranking…' : 'Recommend indexes'}
+          <div className="panel-section">
+            <p className="panel-section-title">Actions</p>
+            <div className="button-row">
+              <button onClick={runAnalysis} disabled={loading}>
+                {loading ? 'Analyzing…' : 'Analyze'}
+              </button>
+              <button onClick={runRecommend} disabled={recommendLoading} className="secondary">
+                {recommendLoading ? 'Ranking…' : 'Recommend indexes'}
+              </button>
+            </div>
+            <button onClick={runSensitivity} disabled={sensitivityLoading} className="secondary full-width">
+              {sensitivityLoading ? 'Analyzing…' : 'Sensitivity analysis'}
             </button>
           </div>
-
-          <button onClick={runSensitivity} disabled={sensitivityLoading} className="secondary full-width">
-            {sensitivityLoading ? 'Analyzing…' : 'Sensitivity analysis'}
-          </button>
 
           {error && <p className="error">{error}</p>}
 
@@ -270,24 +338,18 @@ export default function App() {
             </div>
           )}
 
-          {result && (
-            <div className="summary">
-              <p>Baseline cost: {result.baselineCost.toFixed(2)}</p>
-              <p>With-index cost: {result.withIndexCost.toFixed(2)}</p>
-              <p className={result.percentImprovement > 0 ? 'improvement' : ''}>
-                Change: {result.percentImprovement.toFixed(1)}%
-              </p>
-            </div>
-          )}
         </aside>
 
-        <main className="canvases">
-          <PlanCanvas title="Baseline plan" plan={result?.baselinePlan} cost={result?.baselineCost ?? 0} />
-          <PlanCanvas
-            title="With-index plan"
-            plan={result?.withIndexPlan}
-            cost={result?.withIndexCost ?? 0}
-          />
+        <main className="canvas-area">
+          <CostComparisonBanner result={result} />
+          <div className="canvases">
+            <PlanCanvas title="Baseline plan" plan={result?.baselinePlan} cost={result?.baselineCost ?? 0} />
+            <PlanCanvas
+              title="With-index plan"
+              plan={result?.withIndexPlan}
+              cost={result?.withIndexCost ?? 0}
+            />
+          </div>
         </main>
       </div>
     </div>

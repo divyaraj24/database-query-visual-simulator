@@ -12,12 +12,7 @@ import org.antlr.v4.runtime.Recognizer;
 
 import java.util.Map;
 
-/**
- * Entry point that turns raw DDL/DML text into the ANTLR parse tree and then
- * into the domain model ({@link TableDef}, {@link QueryModel}) the cost
- * engine works with. Kept deliberately thin: grammar rules do the structural
- * work, the two visitor classes do the AST-to-model mapping.
- */
+// turns raw DDL/DML text into the domain model the cost engine works with
 public final class ParserFacade {
 
     private ParserFacade() {

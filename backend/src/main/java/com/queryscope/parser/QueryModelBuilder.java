@@ -9,12 +9,7 @@ import com.queryscope.model.QueryModel;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * Walks a single {@code selectStatement} parse tree and flattens it into a
- * {@link QueryModel}. Table aliases (the {@code AS x} part of a FROM/JOIN
- * item) are resolved back to their real table name so the cost engine only
- * ever has to reason about actual tables.
- */
+// flattens a selectStatement parse tree into a QueryModel, resolving aliases back to real table names
 public class QueryModelBuilder extends SqlSubsetBaseVisitor<Void> {
 
     private final QueryModel model = new QueryModel();

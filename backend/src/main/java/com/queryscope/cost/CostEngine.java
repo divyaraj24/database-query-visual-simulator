@@ -12,13 +12,7 @@ import java.util.Map;
 
 import static com.queryscope.cost.CostConstants.*;
 
-/**
- * Builds an estimated execution plan tree for a {@link QueryModel} using
- * PostgreSQL-inspired heuristic cost formulas. No cost-based join reordering
- * is attempted: joins are applied in FROM/JOIN order (left-deep plan), which
- * keeps the plan fully explainable at the cost of not finding the globally
- * cheapest join order — an explicit, documented MVP simplification.
- */
+// builds a plan tree with PostgreSQL-style heuristic costs; joins stay left-deep, no reordering
 public class CostEngine {
 
     public PlanNode buildPlan(QueryModel model, Map<String, TableDef> tables,
@@ -41,7 +35,12 @@ public class CostEngine {
         for (JoinSpec join : model.getJoins()) {
             PlanNode innerNode = scanNodes.get(join.getRightTable());
             boolean innerIndexed = isIndexed(indexedColumns, join.getRightTable(), join.getRightColumn());
-            current = buildJoinNode(current, innerNode, join, innerIndexed);
+            boolean leftIsPk = isPrimaryKey(tables, join.getLeftTable(), join.getLeftColumn());
+            boolean rightIsPk = isPrimaryKey(tables, join.getRightTable(), join.getRightColumn());
+            double leftTotalRows = rowCounts.getOrDefault(join.getLeftTable(), 1000.0);
+            double rightTotalRows = rowCounts.getOrDefault(join.getRightTable(), 1000.0);
+            current = buildJoinNode(current, innerNode, join, innerIndexed,
+                    leftIsPk, rightIsPk, leftTotalRows, rightTotalRows);
         }
 
         // 3. Optional sort on top.
@@ -89,7 +88,9 @@ public class CostEngine {
         return new PlanNode("SeqScan", "Seq Scan on " + table, outputRows, seqScanCost);
     }
 
-    private PlanNode buildJoinNode(PlanNode outer, PlanNode inner, JoinSpec join, boolean innerIndexed) {
+    private PlanNode buildJoinNode(PlanNode outer, PlanNode inner, JoinSpec join, boolean innerIndexed,
+                                    boolean leftIsPk, boolean rightIsPk,
+                                    double leftTotalRows, double rightTotalRows) {
         double outerRows = outer.getEstimatedRows();
         double innerRows = inner.getEstimatedRows();
 
@@ -100,17 +101,37 @@ public class CostEngine {
 
         double hashJoinCost = outer.getCost() + inner.getCost() + (outerRows + innerRows) * CPU_OPERATOR_COST;
 
-        double resultRows = Math.max(1.0, Math.min(outerRows, innerRows));
+        // PK-FK cardinality: a join on a declared PRIMARY KEY matches at most one row per key,
+        // so the output size tracks the non-unique side, scaled by that side's average fan-out
+        // (its raw row count divided by the PK table's raw row count). With no join column on
+        // either side known to be unique (no distinct-value stats available), fall back to the
+        // same containment heuristic as before.
+        double resultRows;
+        if (leftIsPk && !rightIsPk) {
+            resultRows = outerRows * (rightTotalRows / leftTotalRows);
+        } else if (rightIsPk && !leftIsPk) {
+            resultRows = innerRows * (leftTotalRows / rightTotalRows);
+        } else {
+            resultRows = Math.min(outerRows, innerRows);
+        }
+        resultRows = Math.max(1.0, resultRows);
         String joinLabel = join.getJoinType() + " Join: " + join.getLeftTable() + " ⋈ " + join.getRightTable();
 
         PlanNode joinNode;
+        PlanNode innerChild = inner;
         if (hashJoinCost <= nestedLoopCost) {
             joinNode = new PlanNode("HashJoin", "Hash " + joinLabel, resultRows, hashJoinCost);
         } else {
             joinNode = new PlanNode("NestedLoop", "Nested Loop " + joinLabel, resultRows, nestedLoopCost);
+            // under an indexed nested loop, the inner side is probed by index, not scanned whole;
+            // render it that way instead of leaving the stale full-table scan node attached
+            if (innerIndexed) {
+                String label = "Index Scan on " + join.getRightTable() + " (" + join.getRightColumn() + ")";
+                innerChild = new PlanNode("IndexScan", label, 1.0, perProbeCost);
+            }
         }
         joinNode.addChild(outer);
-        joinNode.addChild(inner);
+        joinNode.addChild(innerChild);
         return joinNode;
     }
 
@@ -124,5 +145,10 @@ public class CostEngine {
 
     private boolean isIndexed(List<IndexRef> indexedColumns, String table, String column) {
         return indexedColumns.stream().anyMatch(ix -> ix.matches(table, column));
+    }
+
+    private boolean isPrimaryKey(Map<String, TableDef> tables, String table, String column) {
+        TableDef tableDef = tables.get(table);
+        return tableDef != null && column.equalsIgnoreCase(tableDef.getPrimaryKeyColumn());
     }
 }

@@ -1,19 +1,16 @@
 const COLUMN_WIDTH = 220;
-const ROW_HEIGHT = 110;
+const ROW_HEIGHT = 120;
 
-const NODE_COLORS = {
-  SeqScan: '#fde68a',
-  IndexScan: '#86efac',
-  HashJoin: '#93c5fd',
-  NestedLoop: '#fca5a5',
-  Sort: '#d8b4fe',
+// kept in sync with the legend swatches in App.jsx and the CSS custom properties in App.css
+export const NODE_COLORS = {
+  SeqScan: { bg: '#f3b64b', text: '#2b1c04' },
+  IndexScan: { bg: '#34c77b', text: '#ffffff' },
+  HashJoin: { bg: '#4f93f7', text: '#ffffff' },
+  NestedLoop: { bg: '#ef6868', text: '#ffffff' },
+  Sort: { bg: '#b075e8', text: '#ffffff' },
 };
 
-/**
- * Flattens a backend PlanNode tree (type/label/estimatedRows/cost/children)
- * into React Flow nodes + edges, laying leaves out left-to-right and
- * parents centered above their children.
- */
+// converts a backend PlanNode tree into React Flow nodes/edges
 export function planToFlow(root, idPrefix) {
   const nodes = [];
   const edges = [];
@@ -32,6 +29,7 @@ export function planToFlow(root, idPrefix) {
       x = childXs.reduce((a, b) => a + b, 0) / childXs.length;
     }
 
+    const colors = NODE_COLORS[node.type] || { bg: '#e5e7eb', text: '#1e293b' };
     nodes.push({
       id,
       position: { x, y: depth * ROW_HEIGHT },
@@ -39,18 +37,27 @@ export function planToFlow(root, idPrefix) {
         label: `${node.label}\nrows≈${Math.round(node.estimatedRows)} · cost≈${node.cost.toFixed(2)}`,
       },
       style: {
-        background: NODE_COLORS[node.type] || '#e5e7eb',
-        border: '1px solid #4b5563',
-        borderRadius: 8,
-        padding: 8,
-        fontSize: 12,
+        background: colors.bg,
+        color: colors.text,
+        border: '1.5px solid rgba(0, 0, 0, 0.18)',
+        borderRadius: 10,
+        padding: '10px 12px',
+        fontSize: 12.5,
+        fontWeight: 500,
+        lineHeight: 1.5,
         whiteSpace: 'pre-line',
-        width: 190,
+        width: 195,
+        boxShadow: '0 2px 6px rgba(15, 23, 42, 0.12)',
       },
     });
 
     if (parentId) {
-      edges.push({ id: `${id}-e`, source: id, target: parentId });
+      edges.push({
+        id: `${id}-e`,
+        source: parentId,
+        target: id,
+        style: { stroke: '#94a3b8', strokeWidth: 1.5 },
+      });
     }
 
     return x;

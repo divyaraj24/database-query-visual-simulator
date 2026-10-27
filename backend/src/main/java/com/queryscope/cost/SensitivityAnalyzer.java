@@ -11,13 +11,7 @@ import java.util.OptionalDouble;
 
 import static com.queryscope.cost.CostConstants.*;
 
-/**
- * Sensitivity / crossover analysis: instead of asking "is this hypothetical
- * index worth it under our assumed selectivity," this asks "at what
- * selectivity would it become worth it." Turns the flat-selectivity
- * heuristic (the project's most-cited limitation) into a boundary
- * condition the user can see directly, rather than a single fixed guess.
- */
+// finds the selectivity/row-count crossover where a hypothetical index would flip the cheapest plan
 public class SensitivityAnalyzer {
 
     public static class ScanCrossover {
@@ -110,8 +104,7 @@ public class SensitivityAnalyzer {
                 results.add(new ScanCrossover(f.getTable(), f.getColumn(), totalRows,
                         crossover.getAsDouble() * 100.0, false));
             } else {
-                // No crossover in (0,1]: index cost at fraction=1 is still below seq cost -> always cheaper,
-                // or index cost at the smallest fraction is already above seq cost -> never cheaper.
+                // no crossover in (0,1] - one side always wins
                 double costAtMin = indexScanCost(MIN_FRACTION, totalRows);
                 boolean alwaysCheaper = costAtMin < seqScanCost;
                 results.add(new ScanCrossover(f.getTable(), f.getColumn(), totalRows, null, alwaysCheaper));

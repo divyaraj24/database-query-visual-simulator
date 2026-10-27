@@ -1,12 +1,6 @@
 package com.queryscope.cost;
 
-/**
- * PostgreSQL-inspired heuristic cost constants (see postgresql.conf defaults:
- * seq_page_cost, random_page_cost, cpu_tuple_cost, cpu_index_tuple_cost,
- * cpu_operator_cost). Used as-is, not calibrated against a real optimizer —
- * the point of the MVP is a transparent, explainable cost *shape*, not
- * production-grade accuracy (documented as a limitation in the paper).
- */
+// PostgreSQL's default cost constants (postgresql.conf), used as-is, not calibrated
 public final class CostConstants {
 
     private CostConstants() {
@@ -18,10 +12,10 @@ public final class CostConstants {
     public static final double CPU_INDEX_TUPLE_COST = 0.005;
     public static final double CPU_OPERATOR_COST = 0.0025;
 
-    /** Assumed average rows per 8 KB heap page, a standard textbook heuristic. */
+    // assumed rows per 8 KB heap page
     public static final double ROWS_PER_PAGE = 100.0;
 
-    /** Flat selectivity heuristic: '=' matches ~1 row, range predicates match ~30% of the table. */
+    // flat selectivity: '=' matches ~1 row, ranges match ~30% of the table
     public static final double EQUALITY_SELECTIVITY_ROWS = 1.0;
     public static final double RANGE_SELECTIVITY_FRACTION = 0.30;
 

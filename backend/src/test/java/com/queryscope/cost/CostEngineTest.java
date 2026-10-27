@@ -13,12 +13,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * Hand-computed cost scenarios (see docs draft "Results and Discussion" for
- * the worked-out formulas these assert against). Each scenario doubles as
- * evidence that the ANTLR parser, the domain model, and the cost engine
- * agree with each other end to end.
- */
+// hand-computed cost scenarios, checked against the formulas by hand before writing these
 class CostEngineTest {
 
     private final CostEngine engine = new CostEngine();
@@ -90,5 +85,38 @@ class CostEngineTest {
         double percentImprovement = 100.0 * (baseline.getCost() - withIndex.getCost()) / baseline.getCost();
         assertTrue(percentImprovement > 60.0 && percentImprovement < 65.0,
                 "expected ~64% improvement, got " + percentImprovement);
+    }
+
+    @Test
+    void foreignKeyJoinCardinalityTracksTheManySideNotTheMinimum() {
+        Map<String, TableDef> tables = ParserFacade.parseSchema(
+                "CREATE TABLE small_table (id INT PRIMARY KEY);"
+                        + "CREATE TABLE big_table (id INT PRIMARY KEY, small_id INT);");
+        QueryModel model = ParserFacade.parseQuery(
+                "SELECT * FROM small_table JOIN big_table ON small_table.id = big_table.small_id");
+        Map<String, Double> rowCounts = Map.of("small_table", 100.0, "big_table", 100000.0);
+
+        PlanNode plan = engine.buildPlan(model, tables, rowCounts, List.of());
+
+        // small_table.id is the PK and small_table is unfiltered (covers all 100 keys), so the
+        // join should return one row per big_table row, not min(100, 100000) = 100.
+        assertEquals(100000.0, plan.getEstimatedRows(), 0.01);
+    }
+
+    @Test
+    void foreignKeyJoinCardinalityScalesWithFilteredOuterRows() {
+        Map<String, TableDef> tables = ParserFacade.parseSchema(
+                "CREATE TABLE customers (id INT PRIMARY KEY, city VARCHAR(50));"
+                        + "CREATE TABLE orders (id INT PRIMARY KEY, customer_id INT);");
+        QueryModel model = ParserFacade.parseQuery(
+                "SELECT * FROM customers JOIN orders ON customers.id = orders.customer_id "
+                        + "WHERE customers.city = 'Chennai'");
+        Map<String, Double> rowCounts = Map.of("customers", 10000.0, "orders", 50000.0);
+
+        PlanNode plan = engine.buildPlan(model, tables, rowCounts, List.of());
+
+        // customers is filtered down to 1 row (equality heuristic); orders averages 50000/10000 = 5
+        // rows per customer, so the join should estimate ~5 rows, not 1 (min) and not 50000 (all of orders).
+        assertEquals(5.0, plan.getEstimatedRows(), 0.01);
     }
 }

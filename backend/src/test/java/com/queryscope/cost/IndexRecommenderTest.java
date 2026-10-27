@@ -26,8 +26,9 @@ class IndexRecommenderTest {
 
         List<IndexRecommender.Recommendation> results = recommender.recommend(model, tables, rowCounts);
 
-        // Candidates should be exactly the two join columns, deduplicated.
-        assertEquals(2, results.size());
+        // small_table.id is that table's PRIMARY KEY (already indexed in any real database),
+        // so the only real candidate is the other join column, big_table.small_id.
+        assertEquals(1, results.size());
 
         IndexRecommender.Recommendation top = results.get(0);
         assertEquals("big_table", top.getTable());
@@ -35,11 +36,6 @@ class IndexRecommenderTest {
         assertEquals(803.5, top.getWithIndexCost(), 0.01);
         assertTrue(top.getPercentImprovement() > 60.0 && top.getPercentImprovement() < 65.0,
                 "expected ~64% improvement, got " + top.getPercentImprovement());
-
-        // Indexing the small_table side (the outer/driving table) shouldn't help at all here.
-        IndexRecommender.Recommendation second = results.get(1);
-        assertEquals("small_table", second.getTable());
-        assertEquals(0.0, second.getPercentImprovement(), 0.01);
     }
 
     @Test
