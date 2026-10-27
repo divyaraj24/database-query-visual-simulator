@@ -23,3 +23,7 @@ cd frontend && npm install && npm run dev   # http://localhost:5173
 ```
 cd backend && mvn test
 ```
+
+## License
+
+Course project for Advanced Java Programming (Review-3).
